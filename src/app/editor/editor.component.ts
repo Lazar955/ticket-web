@@ -1,4 +1,5 @@
-import { Component, OnInit } from '@angular/core';
+
+import { Component, OnInit ,HostListener} from '@angular/core';
 
 import * as SVG from 'svg.js';
 
@@ -20,19 +21,14 @@ export class EditorComponent implements OnInit {
   isMouseUp = true;
   newSeatGroup = false;
   seats: Array<any>;
-
   followEllipse: any;
-  seatColor ='#FF5722';
+  seatColor = '#FF5722';
   mouseX: any;
   mouseY: any;
   seatRadius: number = 50;
   seatGap: number = this.seatRadius / 2.5;
   mainGroup: any;
   prevEvent: any;
- 
-
- 
- 
   prevX: any = 0;
   prevY: any = 0;
   constructor() {
@@ -41,20 +37,18 @@ export class EditorComponent implements OnInit {
 
   ngOnInit() {
     this.createSvg();
+  }
 
-
-    var ids = [8, 9, 10, 11, 12];
-
-    // for(let i=0;i<ids.length;i++){
-    //   let ellipse = this.nodes.group().ellipse(50, 50).attr({ fill: '#FF5722',cx:25+i*70,cy:50}).id(ids[i].toString()).draggy();
-    //   this.panZoom = this.nodes.panZoom();
-    // }
+ @HostListener('wheel', ['$event']) 
+  Wheel(e) {
+    let event = this.nodes.point(e.x, e.y);
+    this.followEllipse.attr({ fill: '#FF5722', cx: event.x, cy: event.y });
   }
 
 
   createSvg() {
     //create svg
-    this.svg = SVG('editor-container').size(5000, 900).id('svg');
+    this.svg = SVG('editor-container').size(window.innerWidth-100, 900).id('svg');
     this.nodes = this.svg.group();
     //styles for background
     document.getElementById('svg').style.backgroundColor = '#E0E0E0';
@@ -63,29 +57,25 @@ export class EditorComponent implements OnInit {
     //create pan zoom object
     this.panZoom = this.nodes.panZoom();
     this.seats = [];
-
-
     this.followEllipse = this.nodes.ellipse(50, 50).attr({ fill: '#FF5722', cx: this.mouseX, cy: this.mouseY });
-
     this.togglePanZoom();
   }
 
-  createElipse(event) {
+  createElipse(e) {
+    let event = this.nodes.point(e.x, e.y);
     this.followEllipse.attr({ fill: '#FF5722', cx: event.x, cy: event.y });
 
     if (this.isMouseDown) {
       let y = 0;
       this.followEllipse.hide();
 
-      if (this.seats.length > 0 && this.newSeatGroup)
-      {
-          this.seats = [];
+      if (this.seats.length > 0 && this.newSeatGroup) {
+        this.seats = [];
       }
-
 
       if (this.getYOfAncorElement() == 0) {
         y = event.y;
-      } 
+      }
 
       //draw the first element
       if (this.seats.length == 0) {
@@ -96,100 +86,86 @@ export class EditorComponent implements OnInit {
         return;
       }
 
-      if(this.seats.length > 0)
-      {
-        let distanceX = this.getDistanceToAncor(event.x, parseInt(this.seats[0][this.seats[0].length-1].attr("cx")));
-        let numberOfEligibleSeats = Math.floor(distanceX / (this.seatRadius+this.seatGap));
-        
-        if(this.isRightOfFirstElement(event)){
-                  
-                  
-                  if(this.isMouseDirectionRight(event)){
-                  let positions = this.getPositonsForSeats(parseInt(this.seats[0][this.seats[0].length-1].attr("cx")),(numberOfEligibleSeats-this.seats[0].length-1), 'r');
+      if (this.seats.length > 0) {
+        let distanceX = this.getDistanceToAncor(event.x, parseInt(this.seats[0][this.seats[0].length - 1].attr("cx")));
+        let numberOfEligibleSeats = Math.floor(distanceX / (this.seatRadius + this.seatGap));
+        let distanceY = this.getDistanceToAncor(event.y, parseInt(this.seats[0][this.seats[0].length - 1].attr("cy")));
+        if (this.isRightOfFirstElement(event)) {
+          if (this.isMouseDirectionRight(event)) {
+            let positions = this.getPositonsForSeats(parseInt(this.seats[0][this.seats[0].length - 1].attr("cx")), (numberOfEligibleSeats - this.seats[0].length - 1), 'r');
+            for (let j = 0; j < this.seats.length; j++) {
+              for (let i = 0; i < positions.length; i++) {
+                this.drawSeatAt(positions[i], parseInt(this.seats[j][0].attr("cy")), this.seats[j]);
+              }
+            }
 
-                    for(let j=0; j< this.seats.length;j++)
-                    {
-                        for(let i=0;i<positions.length;i++)
-                        {
-                          this.drawSeatAt(positions[i],parseInt(this.seats[j][0].attr("cy")),this.seats[j]);
-                        }
-                    }  
-                 
-                
-                  }
-                  else
-                  {
-                      for(let j=0; j< this.seats.length;j++)
-                      {
-                  
-                          for(let i=this.seats[j].length-1;i>-1;i--)
-                          {
-                        
-                            if(parseInt(this.seats[j][i].attr("cx"))>event.x)
-                            {
-                              this.removeSeatAt(this.seats[j],i);
-                            }
-                          }
-                      }
-                   }
+            if (this.isDownFromFirstElement(event)) {
+              for (let j = 0; j < this.seats.length; j++) {
+                for (let i = 0; i < positions.length; i++) {
+                  this.drawSeatAt(positions[i], parseInt(this.seats[j][i].attr("cy")) + this.seatGap + this.seatRadius, this.seats[i]);
+                }
+              }
+            }
+          }
+          else {
+            for (let j = 0; j < this.seats.length; j++) {
+              for (let i = this.seats[j].length - 1; i > -1; i--) {
+                if (parseInt(this.seats[j][i].attr("cx")) > event.x) {
+                  this.removeSeatAt(this.seats[j], i);
+                }
+              }
+            }
+          }
 
         }
-        else
-        {
-              if(this.isMouseDirectionRight(event)){
-                    for(let j=0; j< this.seats.length;j++)
-                    {                      
-                        for(let i=this.seats[j].length-1;i>-1;i--)
-                        {                         
-                          if(parseInt(this.seats[j][i].attr("cx"))<event.x)
-                          {
-                            this.removeSeatAt(this.seats[j],i);
-                          }
-                        }
-                    }
-                  }
-                  else
-                  {
+        else {
+          if (this.isMouseDirectionRight(event)) {
+            for (let j = 0; j < this.seats.length; j++) {
+              for (let i = this.seats[j].length - 1; i > -1; i--) {
+                if (parseInt(this.seats[j][i].attr("cx")) < event.x) {
+                  this.removeSeatAt(this.seats[j], i);
+                }
+              }
+            }
+          }
+          else {
 
-                    let positions = this.getPositonsForSeats(parseInt(this.seats[0][this.seats[0].length-1].attr("cx")),(numberOfEligibleSeats-this.seats[0].length-1),'l');
+            let positions = this.getPositonsForSeats(parseInt(this.seats[0][this.seats[0].length - 1].attr("cx")), (numberOfEligibleSeats - this.seats[0].length - 1), 'l');
 
-                    for(let j=0; j< this.seats.length;j++)
-                    {
-                        for(let i=0;i<positions.length;i++)
-                        {
-                          this.drawSeatAt(positions[i],parseInt(this.seats[j][0].attr("cy")),this.seats[j]);
-                        }
-                    }  
-                
-                 
-                 }
+            for (let j = 0; j < this.seats.length; j++) {
+              for (let i = 0; i < positions.length; i++) {
+                this.drawSeatAt(positions[i], parseInt(this.seats[j][0].attr("cy")), this.seats[j]);
+              }
+            }
+
+
+          }
         }
 
-
+        console.log(this.seats);
       }
 
 
     }
-
-   this.prevEvent = event;
+    this.prevEvent = event;
   }
 
-  isMouseDirectionRight(event) : Boolean{
-    console.log('prev ' + this.prevEvent.x  + ' current ' + event.x);
+  isMouseDirectionRight(event): Boolean {
+    //console.log('prev ' + this.prevEvent.x  + ' current ' + event.x);
     if (this.prevEvent.x < event.x) {
-     
+
       return true;
     }
-  
+
     return false;
   }
 
-  isMouseDirectionDown(event) : Boolean{
-  if (this.prevEvent.y < event.y) {
-    
+  isMouseDirectionDown(event): Boolean {
+    if (this.prevEvent.y < event.y) {
+
       return true;
     }
-   
+
     return false;
 
   }
@@ -203,6 +179,13 @@ export class EditorComponent implements OnInit {
 
   isDownFromFirstElement(event): Boolean {
     if (this.seats.length > 0 && event.y > this.seats[0][0].cy()) {
+      return true;
+    }
+    return false;
+  }
+
+  isDownFromPreviousRow(event, row): Boolean {
+    if (this.seats.length > 0 && event.y > this.seats[row][0].cy()) {
       return true;
     }
     return false;
@@ -222,32 +205,29 @@ export class EditorComponent implements OnInit {
     }
   }
 
-  getPositonsForSeats(startingPoint, numberOfSeats, direction) : Array<any>
-  {
-      let positions = new Array();
-      let previousPosition = startingPoint;
-      
-      
-          for(let i=0;i<numberOfSeats;i++)
-          {
-            let currentPosition = 0;
-            if(direction == 'r'){
-             currentPosition = previousPosition + this.seatRadius+ this.seatGap; 
-            }
-            else{
-              currentPosition = previousPosition - this.seatRadius - this.seatGap; 
-            }
-            positions.push(currentPosition);
-            previousPosition = currentPosition;
-          }
-      
-      return positions;
+  getPositonsForSeats(startingPoint, numberOfSeats, direction): Array<any> {
+    let positions = new Array();
+    let previousPosition = startingPoint;
+
+
+    for (let i = 0; i < numberOfSeats; i++) {
+      let currentPosition = 0;
+      if (direction == 'r') {
+        currentPosition = previousPosition + this.seatRadius + this.seatGap;
+      }
+      else {
+        currentPosition = previousPosition - this.seatRadius - this.seatGap;
+      }
+      positions.push(currentPosition);
+      previousPosition = currentPosition;
+    }
+    return positions;
   }
-  
-  
-  drawSeatAt(x,y,array) {
+
+
+  drawSeatAt(x, y, array) {
     let ellipse;
-    ellipse = this.nodes.ellipse(this.seatRadius, this.seatRadius).attr({ fill: this.seatColor, cx: x, cy: y }).draggy(); 
+    ellipse = this.nodes.ellipse(this.seatRadius, this.seatRadius).attr({ fill: this.seatColor, cx: x, cy: y }).draggy();
     array.push(ellipse);
   }
 
@@ -260,9 +240,8 @@ export class EditorComponent implements OnInit {
     this.isMouseDown = event.buttons === 1;
   }
 
-  onMouseButtonUp(event: MouseEvent)
-  {
-    this.newSeatGroup = event.buttons === 1;  
+  onMouseButtonUp(event: MouseEvent) {
+    this.newSeatGroup = event.buttons === 1;
     this.isMouseDown = false;
   }
 
